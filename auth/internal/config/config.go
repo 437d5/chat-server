@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 
@@ -10,6 +9,7 @@ import (
 
 type Config struct {
 	ConfigDatabase
+	ConfigJWT
 }
 
 type ConfigDatabase struct {
@@ -20,10 +20,15 @@ type ConfigDatabase struct {
 	DatabaseName string
 }
 
-func InitConfig(configPath string) (*Config, error) {
+type ConfigJWT struct {
+	SecretKey string
+	ExpAt int
+}
+
+func MustInitConfig(configPath string) *Config {
 	err := godotenv.Load(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("error loading .env file: %s", err)
+		panic("error loading .env file")
 	}
 
 	host := os.Getenv("AUTH_DB_HOST")
@@ -37,12 +42,21 @@ func InitConfig(configPath string) (*Config, error) {
 	}
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid port in config: %s", err)
+		panic("invalid port in config")
 	}
 
 	username := os.Getenv("AUTH_DB_USERNAME")
 	passwd := os.Getenv("AUTH_DB_PASSWORD")
 	dbname := os.Getenv("AUTH_DB_DBNAME")
+
+	secretKey := os.Getenv("AUTH_SECRET_KEY")
+
+	expAtStr := os.Getenv("AUTH_EXP_AT")
+	if expAtStr == "" {
+		expAtStr = "1"
+	}
+
+	expAt, _ := strconv.Atoi(expAtStr)
 
 	return &Config{
 		ConfigDatabase {
@@ -52,5 +66,9 @@ func InitConfig(configPath string) (*Config, error) {
 			Password: passwd,
 			DatabaseName: dbname,
 		},
-	}, nil
+		ConfigJWT{
+			SecretKey: secretKey,
+			ExpAt: expAt,	
+		},
+	}
 }
